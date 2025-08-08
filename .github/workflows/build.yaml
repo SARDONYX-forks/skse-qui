@@ -1,0 +1,45 @@
+name: Build and Zip
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Setup MSVC Environment
+        uses: ilammy/msvc-dev-cmd@v1.10.0
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v10.0
+        with:
+          vcpkgGitCommitId: "198d68dbcc6c907cb3d0b9b1d93c3df6ecf93c62"
+          doNotCache: true
+
+      - name: Create overlay ports dir
+        run: mkdir cmake/ports
+
+      - name: Build
+        uses: lukka/run-cmake@v10.0
+        with:
+          cmakeListsTxtPath: ${{ github.workspace }}/CMakeLists.txt
+          configurePreset: ninja-windows-vcpkg-ng
+          buildPreset: "Release - NG"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QUI
+          path: |
+            build-ng/qui.dll
+            build-ng/qui.pdb

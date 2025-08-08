@@ -114,123 +114,123 @@ namespace Core::Menu
 		return true;
 	}
 
-	bool PluginExplorerMenu::ProcessButton(RE::ButtonEvent* a_event)
+	bool PluginExplorerMenu::ProcessButton(RE::ButtonEvent* event)
 	{
 		using Device = RE::INPUT_DEVICE;
-		auto device = a_event->GetDevice();
+		auto device = event->GetDevice();
+		bool isKeyReleased = event->IsUp();
+		bool isKeyPressed = event->IsDown();
 
-		if (a_event->IsUp()) {
-			switch (device) {
-				case Device::kKeyboard: {
-					using Key = RE::BSWin32KeyboardDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kW:
-						case Key::kUp: {
-							if (_upHeld > 0)
-								_upHeld -= 1;
-							break;
-						}
-						case Key::kS:
-						case Key::kDown: {
-							if (_downHeld > 0)
-								_downHeld -= 1;
-							break;
-						}
-					}
-				} break;
-				case Device::kGamepad: {
-					using Key = RE::BSWin32GamepadDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kUp: {
-							if (_upHeld > 0)
-								_upHeld -= 1;
-							break;
-						}
-						case Key::kDown: {
-							if (_downHeld > 0)
-								_downHeld -= 1;
-							break;
-						}
-					}
+		enum class Action
+		{
+			None,
+			MoveUp,
+			MoveDown,
+			PageUp,
+			PageDown,
+			Select,
+			Back
+		};
+
+		Action action = Action::None;
+
+		switch (device) {
+			case Device::kKeyboard: {
+				using Key = RE::BSWin32KeyboardDevice::Key;
+				switch (event->idCode) {
+					case Key::kW:
+					case Key::kUp: action = Action::MoveUp; break;
+					case Key::kS:
+					case Key::kDown: action = Action::MoveDown; break;
+					case Key::kPageUp: action = Action::PageUp; break;
+					case Key::kPageDown: action = Action::PageDown; break;
+					case Key::kD:
+					case Key::kRight:
+					case Key::kEnter: action = Action::Select; break;
+					case Key::kA:
+					case Key::kLeft:
+					case Key::kEscape:
+					case Key::kTab: action = Action::Back; break;
 				}
+				break;
 			}
+			case Device::kMouse: {
+				using Key = RE::BSWin32MouseDevice::Key;
+				switch (event->idCode) {
+					case Key::kLeftButton: action = Action::Select; break;
+					case Key::kRightButton: action = Action::Back; break;
+					case Key::kWheelUp: action = Action::MoveUp; break;
+					case Key::kWheelDown: action = Action::MoveDown; break;
+				}
+				break;
+			}
+			case Device::kGamepad: {
+				auto& eventName = event->QUserEvent();
+				auto  userEvents = RE::UserEvents::GetSingleton();
+
+				if (eventName == userEvents->accept) {
+					action = Action::Select;
+				} else if (eventName == userEvents->cancel) {
+					action = Action::Back;
+				} else if (eventName == userEvents->up) {
+					action = Action::MoveUp;
+				} else if (eventName == userEvents->down) {
+					action = Action::MoveDown;
+				} else if (eventName == userEvents->left || eventName == userEvents->pageUp) {
+					action = Action::PageUp;
+				} else if (eventName == userEvents->right || eventName == userEvents->pageDown) {
+					action = Action::PageDown;
+				}
+				break;
+			}
+			default: break;
 		}
 
-		if (a_event->IsDown()) {
-			switch (device) {
-				case Device::kKeyboard: {
-					using Key = RE::BSWin32KeyboardDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kD:
-						case Key::kRight:
-						case Key::kEnter:
-							Select();
-							break;
-						case Key::kA:
-						case Key::kLeft:
-						case Key::kEscape:
-						case Key::kTab:
-							Back();
-							break;
-						case Key::kW:
-						case Key::kUp: {
-							_upHeld += 1;
-							ModSelectedIndex(-1);
-							break;
-						}
-						case Key::kS:
-						case Key::kDown: {
-							_downHeld += 1;
-							ModSelectedIndex(1);
-							break;
-						}
-						case Key::kPageUp:
-							ModSelectedIndex(-16);
-							break;
-						case Key::kPageDown:
-							ModSelectedIndex(16);
-							break;
-					}
-				} break;
-				case Device::kMouse: {
-					using Key = RE::BSWin32MouseDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kLeftButton:
-							Select();
-							break;
-						case Key::kRightButton:
-							Back();
-							break;
-						case Key::kWheelUp:
-							ModSelectedIndex(-1);
-							break;
-						case Key::kWheelDown:
-							ModSelectedIndex(1);
-							break;
-					}
-				} break;
-				case Device::kGamepad: {
-					using Key = RE::BSWin32GamepadDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kA:
-							Select();
-							break;
-						case Key::kB:
-							Back();
-							break;
-						case Key::kUp: {
-							_upHeld += 1;
-							ModSelectedIndex(-1);
-							break;
-						}
-						case Key::kDown: {
-							_downHeld += 1;
-							ModSelectedIndex(1);
-							break;
-						}
-					}
-				} break;
-			}
+		switch (action) {
+			case Action::MoveUp:
+				if (isKeyPressed) {
+					_upHeld += 1;
+					ModSelectedIndex(-1);
+				} else if (isKeyReleased && _upHeld > 0) {
+					_upHeld -= 1;
+				}
+				break;
+			case Action::MoveDown:
+				if (isKeyPressed) {
+					_downHeld += 1;
+					ModSelectedIndex(1);
+				} else if (isKeyReleased && _downHeld > 0) {
+					_downHeld -= 1;
+				}
+				break;
+			case Action::PageUp:
+				if (isKeyPressed) {
+					ModSelectedIndex(-16);
+				}
+				break;
+			case Action::PageDown:
+				if (isKeyPressed) {
+					ModSelectedIndex(16);
+				}
+				break;
+			case Action::Select:
+				if (isKeyPressed) {
+					Select();
+				}
+				break;
+			case Action::Back:
+				if (isKeyPressed) {
+					Back();
+				}
+				break;
+			case Action::None:
+				break;
+		}
+
+		if (isKeyReleased) {
+			_upHeld = false;
+			_heldGuard = 0;
+			_heldCount = 0;
 		}
 
 		return true;
@@ -274,7 +274,7 @@ namespace Core::Menu
 		};
 
 		for (const auto& [object, path] : objects) {
-			auto& instance = object.get().GetInstance();
+			auto&                       instance = object.get().GetInstance();
 			[[maybe_unused]] const bool success = _view->GetVariable(std::addressof(instance), path.data());
 			SF::Assert(success && instance.IsObject());
 		}
@@ -387,11 +387,11 @@ namespace Core::Menu
 		auto plugin = PluginExplorer::FindPlugin(_pluginIndex);
 		if (plugin) {
 			auto& types = plugin->GetForms();
-			auto doForms = [&](RE::FormType a_type) {
-				if (types.contains(a_type)) {
+			auto  doForms = [&](RE::FormType a_type) {
+                if (types.contains(a_type)) {
                     auto itemForm = std::make_shared<Item::ItemForm>(a_type, types[a_type].size());
                     _formList.push_back(itemForm);
-				}
+                }
 			};
 
 			using Type = RE::FormType;
@@ -512,6 +512,7 @@ namespace Core::Menu
 		uint32_t indexAccept;
 		uint32_t indexCancel;
 
+		// TODO: Gets the keys for “Accept” and “Cancel” from the singleton of the ContorlMap class and convert them to indexes.
 		auto input = RE::BSInputDeviceManager::GetSingleton();
 		if (input->IsGamepadEnabled()) {
 			using Key = RE::BSWin32GamepadDevice::Key;

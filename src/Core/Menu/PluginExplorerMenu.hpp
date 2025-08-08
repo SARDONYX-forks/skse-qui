@@ -20,7 +20,7 @@ namespace Core::Menu
 	public:
 		static constexpr std::string_view FILE_NAME{ "PluginExplorerMenu" };
 		static constexpr std::string_view MENU_NAME{ "PluginExplorerMenu" };
-		static constexpr std::int8_t SORT_PRIORITY{ 3 };
+		static constexpr std::int8_t      SORT_PRIORITY{ 3 };
 
 		PluginExplorerMenu();
 		~PluginExplorerMenu() override;
@@ -29,8 +29,8 @@ namespace Core::Menu
 
 		// override (IMenu)
 		RE::UI_MESSAGE_RESULTS ProcessMessage(RE::UIMessage& a_message) override;
-		void AdvanceMovie(float a_interval, uint32_t a_currentTime) override;
-		void RefreshPlatform() override { UpdateButtonBar(); }
+		void                   AdvanceMovie(float a_interval, uint32_t a_currentTime) override;
+		void                   RefreshPlatform() override { UpdateButtonBar(); }
 
 		// override (MenuEventHandler)
 		bool CanProcess(RE::InputEvent* a_event) override;
@@ -52,13 +52,13 @@ namespace Core::Menu
 		static void Close();
 		static void Toggle();
 
-		static void SetFocus(Focus a_focus) { _focus = a_focus; }
+		static void  SetFocus(Focus a_focus) { _focus = a_focus; }
 		static Focus GetFocus() { return _focus; };
 
 		static std::string GetPluginName() { return _pluginName; }
-		static uint32_t GetPluginIndex() { return _pluginIndex; }
+		static uint32_t    GetPluginIndex() { return _pluginIndex; }
 
-		static std::string GetFormName() { return _formName; }
+		static std::string  GetFormName() { return _formName; }
 		static RE::FormType GetFormType() { return _formType; }
 
 	private:
@@ -93,7 +93,7 @@ namespace Core::Menu
 		SF::ItemList _formList;
 
 		SF::CLIK::GFx::Controls::ButtonBar _buttonBar;
-		RE::GFxValue _buttonBarProvider;
+		RE::GFxValue                       _buttonBarProvider;
 
 		uint32_t _heldGuard{ 0 };
 		uint32_t _heldCount{ 0 };
@@ -103,11 +103,11 @@ namespace Core::Menu
 		static inline Focus _focus{ Focus::Plugin };
 
 		static inline std::string _pluginName;
-		static inline uint32_t _pluginIndex{ 0 };
-		static inline double _pluginListIndex{ 0 };
+		static inline uint32_t    _pluginIndex{ 0 };
+		static inline double      _pluginListIndex{ 0 };
 
-		static inline std::string _formName;
+		static inline std::string  _formName;
 		static inline RE::FormType _formType{ RE::FormType::None };
-		static inline double _formListIndex{ 0 };
+		static inline double       _formListIndex{ 0 };
 	};
 }
