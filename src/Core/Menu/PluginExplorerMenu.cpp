@@ -116,8 +116,8 @@ namespace Core::Menu
 	{
 		using Device = RE::INPUT_DEVICE;
 		auto device = event->GetDevice();
-		bool isUp = event->IsUp();
-		bool isDown = event->IsDown();
+		bool isKeyReleased = event->IsUp();
+		bool isKeyPressed = event->IsDown();
 
 		enum class Action
 		{
@@ -174,9 +174,9 @@ namespace Core::Menu
 					action = Action::MoveUp;
 				} else if (eventName == userEvents->down) {
 					action = Action::MoveDown;
-				} else if (eventName == userEvents->pageUp) {
+				} else if (eventName == userEvents->right || eventName == userEvents->pageUp) {
 					action = Action::PageUp;
-				} else if (eventName == userEvents->pageDown) {
+				} else if (eventName == userEvents->left || eventName == userEvents->pageDown) {
 					action = Action::PageDown;
 				}
 				break;
@@ -186,34 +186,36 @@ namespace Core::Menu
 
 		switch (action) {
 			case Action::MoveUp:
-				_upHeld = isDown;
-				if (isDown) {
+				_upHeld = isKeyPressed;
+				if (isKeyPressed) {
+					_upHeld = true;
 					ModSelectedIndex(-1);
 				}
 				break;
 			case Action::MoveDown:
-				_downHeld = isDown;
-				if (isDown) {
+				_downHeld = isKeyPressed;
+				if (isKeyPressed) {
+					_downHeld = true;
 					ModSelectedIndex(1);
 				}
 				break;
 			case Action::PageUp:
-				if (isDown) {
+				if (isKeyPressed) {
 					ModSelectedIndex(-16);
 				}
 				break;
 			case Action::PageDown:
-				if (isDown) {
+				if (isKeyPressed) {
 					ModSelectedIndex(16);
 				}
 				break;
 			case Action::Select:
-				if (isDown) {
+				if (isKeyPressed) {
 					Select();
 				}
 				break;
 			case Action::Back:
-				if (isDown) {
+				if (isKeyPressed) {
 					Back();
 				}
 				break;
@@ -221,7 +223,8 @@ namespace Core::Menu
 				break;
 		}
 
-		if (isUp) {
+		if (isKeyReleased) {
+			_upHeld = false;
 			_heldGuard = 0;
 			_heldCount = 0;
 		}
