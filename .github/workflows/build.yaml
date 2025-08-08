@@ -40,4 +40,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: QUI
-          path: build-ng/Release/*
+          path: |
+            build-ng/qui.dll
+            build-ng/qui.pdb
