@@ -10,8 +10,8 @@
       "name": "cmake-dev",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
-        "CMAKE_CXX_FLAGS": "/EHsc /MP /W4 /external:anglebrackets /external:W0 $penv{CXXFLAGS}"
+        "CMAKE_CXX_FLAGS": "/EHsc /MP /W4 /external:anglebrackets /external:W0 $penv{CXXFLAGS}",
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -31,10 +31,9 @@
       }
     },
     {
-      "name": "vs2022",
+      "name": "ninja",
       "hidden": true,
-      "generator": "Visual Studio 17 2022",
-      "toolset": "v143"
+      "generator": "Ninja"
     },
     {
       "name": "release",
@@ -58,51 +57,30 @@
       }
     },
     {
-      "name": "vs2022-windows-vcpkg-release",
-      "inherits": [
-        "cmake-dev",
-        "vcpkg",
-        "windows",
-        "vs2022",
-        "release"
-      ]
+      "name": "ninja-windows-vcpkg-release",
+      "inherits": ["cmake-dev", "vcpkg", "windows", "ninja", "release"]
     },
     {
-      "name": "vs2022-windows-vcpkg-test",
-      "inherits": [
-        "cmake-dev",
-        "vcpkg",
-        "windows",
-        "vs2022",
-        "test"
-      ]
+      "name": "ninja-windows-vcpkg-test",
+      "inherits": ["cmake-dev", "vcpkg", "windows", "ninja", "test"]
     },
     {
-      "name": "vs2022-windows-vcpkg-ng",
-      "inherits": [
-        "cmake-dev",
-        "vcpkg",
-        "windows",
-        "vs2022",
-        "ng"
-      ]
+      "name": "ninja-windows-vcpkg-ng",
+      "inherits": ["cmake-dev", "vcpkg", "windows", "ninja", "ng"]
     }
   ],
   "buildPresets": [
     {
       "name": "Release",
-      "configurePreset": "vs2022-windows-vcpkg-release",
-      "configuration": "Release"
+      "configurePreset": "ninja-windows-vcpkg-release"
     },
     {
       "name": "Test",
-      "configurePreset": "vs2022-windows-vcpkg-test",
-      "configuration": "Release"
+      "configurePreset": "ninja-windows-vcpkg-test"
     },
     {
       "name": "Release - NG",
-      "configurePreset": "vs2022-windows-vcpkg-ng",
-      "configuration": "Release"
+      "configurePreset": "ninja-windows-vcpkg-ng"
     }
   ]
 }

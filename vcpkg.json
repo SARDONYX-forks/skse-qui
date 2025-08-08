@@ -1,18 +1,10 @@
 {
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "qui",
   "version-string": "0.4.0",
   "description": "",
-  "homepage": "",
-  "license": "gpl3",
-  "dependencies": [
-    "rapidcsv",
-    "directxtk",
-    "frozen",
-    "rsm-binary-io",
-    "tomlplusplus",
-    "spdlog",
-    "xbyak"
-  ],
+  "license": "GPL-3.0-only",
+  "dependencies": ["rapidcsv", "directxtk", "frozen", "rsm-binary-io", "tomlplusplus", "spdlog", "xbyak"],
   "overrides": [
     {
       "name": "fmt",

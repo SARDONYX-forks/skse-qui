@@ -6,8 +6,6 @@
 #include "Core/Config.hpp"
 #include "Core/Locale/LocaleManager.hpp"
 
-#include "General/Input.hpp"
-
 #include "Scaleform/System/Logger.hpp"
 
 namespace Core::Menu
@@ -118,22 +116,36 @@ namespace Core::Menu
 	{
 		using Device = RE::INPUT_DEVICE;
 		auto device = a_event->GetDevice();
+		bool isDown = a_event->IsDown();
+		bool isUp = a_event->IsUp();
+		auto userEvent = RE::UserEvents::GetSingleton();
 
-		if (a_event->IsUp()) {
+		if (isUp) {
 			switch (device) {
 				case Device::kKeyboard: {
 					using Key = RE::BSWin32KeyboardDevice::Key;
 					switch (a_event->idCode) {
 						case Key::kW:
 						case Key::kUp: {
-							if (_upHeld > 0)
-								_upHeld -= 1;
+							_upHeld = isDown;  // true/false
+							if (isDown) {
+								ModSelectedIndex(-1);
+							}
+							if (isUp) {
+								_heldGuard = 0;
+								_heldCount = 0;
+							}
 							break;
 						}
 						case Key::kS:
 						case Key::kDown: {
-							if (_downHeld > 0)
-								_downHeld -= 1;
+							_downHeld = isDown;
+							if (isDown)
+								ModSelectedIndex(1);
+							if (isUp) {
+								_heldGuard = 0;
+								_heldCount = 0;
+							}
 							break;
 						}
 					}
@@ -156,7 +168,7 @@ namespace Core::Menu
 			}
 		}
 
-		if (a_event->IsDown()) {
+		if (isDown) {
 			switch (device) {
 				case Device::kKeyboard: {
 					using Key = RE::BSWin32KeyboardDevice::Key;
@@ -174,14 +186,25 @@ namespace Core::Menu
 							break;
 						case Key::kW:
 						case Key::kUp: {
-							_upHeld += 1;
-							ModSelectedIndex(-1);
+							_upHeld = isDown;
+							if (isDown) {
+								ModSelectedIndex(-1);
+							}
+							if (isUp) {
+								_heldGuard = 0;
+								_heldCount = 0;
+							}
 							break;
 						}
 						case Key::kS:
 						case Key::kDown: {
-							_downHeld += 1;
-							ModSelectedIndex(1);
+							_downHeld = isDown;
+							if (isDown)
+								ModSelectedIndex(1);
+							if (isUp) {
+								_heldGuard = 0;
+								_heldCount = 0;
+							}
 							break;
 						}
 						case Key::kPageUp:
@@ -211,23 +234,33 @@ namespace Core::Menu
 				} break;
 				case Device::kGamepad: {
 					using Key = RE::BSWin32GamepadDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kA:
-							Select();
-							break;
-						case Key::kB:
-							Back();
-							break;
-						case Key::kUp: {
-							_upHeld += 1;
+					auto& event_name = a_event->QUserEvent();
+
+					if (event_name == userEvent->accept) {
+						Select();
+					} else if (event_name == userEvent->cancel) {
+						Back();
+					} else if (event_name == userEvent->up) {
+						_upHeld += 1;
+						_upHeld = isDown;
+						if (isDown)
 							ModSelectedIndex(-1);
-							break;
+						if (isUp) {
+							_heldGuard = 0;
+							_heldCount = 0;
 						}
-						case Key::kDown: {
-							_downHeld += 1;
+					} else if (event_name == userEvent->down) {
+						_downHeld = isDown;
+						if (isDown)
 							ModSelectedIndex(1);
-							break;
+						if (isUp) {
+							_heldGuard = 0;
+							_heldCount = 0;
 						}
+					} else if (event_name == userEvent->pageUp) {
+						ModSelectedIndex(-16);
+					} else if (event_name == userEvent->pageDown) {
+						ModSelectedIndex(16);
 					}
 				} break;
 			}
@@ -274,7 +307,7 @@ namespace Core::Menu
 		};
 
 		for (const auto& [object, path] : objects) {
-			auto& instance = object.get().GetInstance();
+			auto&                       instance = object.get().GetInstance();
 			[[maybe_unused]] const bool success = _view->GetVariable(std::addressof(instance), path.data());
 			SF::Assert(success && instance.IsObject());
 		}
@@ -387,11 +420,11 @@ namespace Core::Menu
 		auto plugin = PluginExplorer::FindPlugin(_pluginIndex);
 		if (plugin) {
 			auto& types = plugin->GetForms();
-			auto doForms = [&](RE::FormType a_type) {
-				if (types.contains(a_type)) {
+			auto  doForms = [&](RE::FormType a_type) {
+                if (types.contains(a_type)) {
                     auto itemForm = std::make_shared<Item::ItemForm>(a_type, types[a_type].size());
                     _formList.push_back(itemForm);
-				}
+                }
 			};
 
 			using Type = RE::FormType;
@@ -509,23 +542,12 @@ namespace Core::Menu
 		if (!_view)
 			return;
 
-		uint32_t indexAccept;
-		uint32_t indexCancel;
-
-		auto input = RE::BSInputDeviceManager::GetSingleton();
-		if (input->IsGamepadEnabled()) {
-			using Key = RE::BSWin32GamepadDevice::Key;
-			indexAccept = General::Input::GetGamepadIndex(Key::kA);
-			indexCancel = General::Input::GetGamepadIndex(Key::kBack);
-		} else {
-			using Key = RE::BSWin32KeyboardDevice::Key;
-			indexAccept = General::Input::GetKeyboardIndex(Key::kEnter);
-			indexCancel = General::Input::GetKeyboardIndex(Key::kEscape);
-		}
+		auto userEvent = RE::UserEvents::GetSingleton();
 
 		_buttonBarProvider.ClearElements();
 		auto gmst = RE::GameSettingCollection::GetSingleton();
-		auto makeButton = [&](uint32_t a_index, const char* a_label) {
+
+		auto makeButton = [&](std::string_view a_index, const char* a_label) {
 			RE::GFxValue obj;
 			_view->CreateObject(std::addressof(obj));
 			auto setting = gmst->GetSetting(a_label);
@@ -534,11 +556,11 @@ namespace Core::Menu
 			_buttonBarProvider.PushBack(obj);
 		};
 
-		makeButton(indexAccept, "sAccept");
+		makeButton(userEvent->accept, "sAccept");
 		if (_focus == Focus::Plugin)
-			makeButton(indexCancel, "sCancel");
+			makeButton(userEvent->cancel, "sCancel");
 		else
-			makeButton(indexCancel, "sBack");
+			makeButton(userEvent->cancel, "sBack");
 
 		_buttonBar.InvalidateData();
 	}
