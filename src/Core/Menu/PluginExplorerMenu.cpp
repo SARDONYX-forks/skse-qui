@@ -6,6 +6,8 @@
 #include "Core/Config.hpp"
 #include "Core/Locale/LocaleManager.hpp"
 
+#include "General/Input.hpp"
+
 #include "Scaleform/System/Logger.hpp"
 
 namespace Core::Menu
@@ -174,9 +176,9 @@ namespace Core::Menu
 					action = Action::MoveUp;
 				} else if (eventName == userEvents->down) {
 					action = Action::MoveDown;
-				} else if (eventName == userEvents->right || eventName == userEvents->pageUp) {
+				} else if (eventName == userEvents->left || eventName == userEvents->pageUp) {
 					action = Action::PageUp;
-				} else if (eventName == userEvents->left || eventName == userEvents->pageDown) {
+				} else if (eventName == userEvents->right || eventName == userEvents->pageDown) {
 					action = Action::PageDown;
 				}
 				break;
@@ -186,17 +188,19 @@ namespace Core::Menu
 
 		switch (action) {
 			case Action::MoveUp:
-				_upHeld = isKeyPressed;
 				if (isKeyPressed) {
-					_upHeld = true;
+					_upHeld += 1;
 					ModSelectedIndex(-1);
+				} else if (isKeyReleased && _upHeld > 0) {
+					_upHeld -= 1;
 				}
 				break;
 			case Action::MoveDown:
-				_downHeld = isKeyPressed;
 				if (isKeyPressed) {
-					_downHeld = true;
+					_downHeld += 1;
 					ModSelectedIndex(1);
+				} else if (isKeyReleased && _downHeld > 0) {
+					_downHeld -= 1;
 				}
 				break;
 			case Action::PageUp:
@@ -505,12 +509,24 @@ namespace Core::Menu
 		if (!_view)
 			return;
 
-		auto userEvent = RE::UserEvents::GetSingleton();
+		uint32_t indexAccept;
+		uint32_t indexCancel;
+
+		// TODO: Gets the keys for “Accept” and “Cancel” from the singleton of the ContorlMap class and convert them to indexes.
+		auto input = RE::BSInputDeviceManager::GetSingleton();
+		if (input->IsGamepadEnabled()) {
+			using Key = RE::BSWin32GamepadDevice::Key;
+			indexAccept = General::Input::GetGamepadIndex(Key::kA);
+			indexCancel = General::Input::GetGamepadIndex(Key::kBack);
+		} else {
+			using Key = RE::BSWin32KeyboardDevice::Key;
+			indexAccept = General::Input::GetKeyboardIndex(Key::kEnter);
+			indexCancel = General::Input::GetKeyboardIndex(Key::kEscape);
+		}
 
 		_buttonBarProvider.ClearElements();
 		auto gmst = RE::GameSettingCollection::GetSingleton();
-
-		auto makeButton = [&](std::string_view a_index, const char* a_label) {
+		auto makeButton = [&](uint32_t a_index, const char* a_label) {
 			RE::GFxValue obj;
 			_view->CreateObject(std::addressof(obj));
 			auto setting = gmst->GetSetting(a_label);
@@ -519,11 +535,11 @@ namespace Core::Menu
 			_buttonBarProvider.PushBack(obj);
 		};
 
-		makeButton(userEvent->accept, "sAccept");
+		makeButton(indexAccept, "sAccept");
 		if (_focus == Focus::Plugin)
-			makeButton(userEvent->cancel, "sCancel");
+			makeButton(indexCancel, "sCancel");
 		else
-			makeButton(userEvent->cancel, "sBack");
+			makeButton(indexCancel, "sBack");
 
 		_buttonBar.InvalidateData();
 	}
