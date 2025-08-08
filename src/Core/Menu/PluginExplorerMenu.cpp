@@ -112,158 +112,118 @@ namespace Core::Menu
 		return true;
 	}
 
-	bool PluginExplorerMenu::ProcessButton(RE::ButtonEvent* a_event)
+	bool PluginExplorerMenu::ProcessButton(RE::ButtonEvent* event)
 	{
 		using Device = RE::INPUT_DEVICE;
-		auto device = a_event->GetDevice();
-		bool isDown = a_event->IsDown();
-		bool isUp = a_event->IsUp();
-		auto userEvent = RE::UserEvents::GetSingleton();
+		auto device = event->GetDevice();
+		bool isUp = event->IsUp();
+		bool isDown = event->IsDown();
 
-		if (isUp) {
-			switch (device) {
-				case Device::kKeyboard: {
-					using Key = RE::BSWin32KeyboardDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kW:
-						case Key::kUp: {
-							_upHeld = isDown;  // true/false
-							if (isDown) {
-								ModSelectedIndex(-1);
-							}
-							if (isUp) {
-								_heldGuard = 0;
-								_heldCount = 0;
-							}
-							break;
-						}
-						case Key::kS:
-						case Key::kDown: {
-							_downHeld = isDown;
-							if (isDown)
-								ModSelectedIndex(1);
-							if (isUp) {
-								_heldGuard = 0;
-								_heldCount = 0;
-							}
-							break;
-						}
-					}
-				} break;
-				case Device::kGamepad: {
-					using Key = RE::BSWin32GamepadDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kUp: {
-							if (_upHeld > 0)
-								_upHeld -= 1;
-							break;
-						}
-						case Key::kDown: {
-							if (_downHeld > 0)
-								_downHeld -= 1;
-							break;
-						}
-					}
+		enum class Action
+		{
+			None,
+			MoveUp,
+			MoveDown,
+			PageUp,
+			PageDown,
+			Select,
+			Back
+		};
+
+		Action action = Action::None;
+
+		switch (device) {
+			case Device::kKeyboard: {
+				using Key = RE::BSWin32KeyboardDevice::Key;
+				switch (event->idCode) {
+					case Key::kW:
+					case Key::kUp: action = Action::MoveUp; break;
+					case Key::kS:
+					case Key::kDown: action = Action::MoveDown; break;
+					case Key::kPageUp: action = Action::PageUp; break;
+					case Key::kPageDown: action = Action::PageDown; break;
+					case Key::kD:
+					case Key::kRight:
+					case Key::kEnter: action = Action::Select; break;
+					case Key::kA:
+					case Key::kLeft:
+					case Key::kEscape:
+					case Key::kTab: action = Action::Back; break;
 				}
+				break;
 			}
+			case Device::kMouse: {
+				using Key = RE::BSWin32MouseDevice::Key;
+				switch (event->idCode) {
+					case Key::kLeftButton: action = Action::Select; break;
+					case Key::kRightButton: action = Action::Back; break;
+					case Key::kWheelUp: action = Action::MoveUp; break;
+					case Key::kWheelDown: action = Action::MoveDown; break;
+				}
+				break;
+			}
+			case Device::kGamepad: {
+				auto& eventName = event->QUserEvent();
+				auto  userEvents = RE::UserEvents::GetSingleton();
+
+				if (eventName == userEvents->accept) {
+					action = Action::Select;
+				} else if (eventName == userEvents->cancel) {
+					action = Action::Back;
+				} else if (eventName == userEvents->up) {
+					action = Action::MoveUp;
+				} else if (eventName == userEvents->down) {
+					action = Action::MoveDown;
+				} else if (eventName == userEvents->pageUp) {
+					action = Action::PageUp;
+				} else if (eventName == userEvents->pageDown) {
+					action = Action::PageDown;
+				}
+				break;
+			}
+			default: break;
 		}
 
-		if (isDown) {
-			switch (device) {
-				case Device::kKeyboard: {
-					using Key = RE::BSWin32KeyboardDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kD:
-						case Key::kRight:
-						case Key::kEnter:
-							Select();
-							break;
-						case Key::kA:
-						case Key::kLeft:
-						case Key::kEscape:
-						case Key::kTab:
-							Back();
-							break;
-						case Key::kW:
-						case Key::kUp: {
-							_upHeld = isDown;
-							if (isDown) {
-								ModSelectedIndex(-1);
-							}
-							if (isUp) {
-								_heldGuard = 0;
-								_heldCount = 0;
-							}
-							break;
-						}
-						case Key::kS:
-						case Key::kDown: {
-							_downHeld = isDown;
-							if (isDown)
-								ModSelectedIndex(1);
-							if (isUp) {
-								_heldGuard = 0;
-								_heldCount = 0;
-							}
-							break;
-						}
-						case Key::kPageUp:
-							ModSelectedIndex(-16);
-							break;
-						case Key::kPageDown:
-							ModSelectedIndex(16);
-							break;
-					}
-				} break;
-				case Device::kMouse: {
-					using Key = RE::BSWin32MouseDevice::Key;
-					switch (a_event->idCode) {
-						case Key::kLeftButton:
-							Select();
-							break;
-						case Key::kRightButton:
-							Back();
-							break;
-						case Key::kWheelUp:
-							ModSelectedIndex(-1);
-							break;
-						case Key::kWheelDown:
-							ModSelectedIndex(1);
-							break;
-					}
-				} break;
-				case Device::kGamepad: {
-					using Key = RE::BSWin32GamepadDevice::Key;
-					auto& event_name = a_event->QUserEvent();
+		switch (action) {
+			case Action::MoveUp:
+				_upHeld = isDown;
+				if (isDown) {
+					ModSelectedIndex(-1);
+				}
+				break;
+			case Action::MoveDown:
+				_downHeld = isDown;
+				if (isDown) {
+					ModSelectedIndex(1);
+				}
+				break;
+			case Action::PageUp:
+				if (isDown) {
+					ModSelectedIndex(-16);
+				}
+				break;
+			case Action::PageDown:
+				if (isDown) {
+					ModSelectedIndex(16);
+				}
+				break;
+			case Action::Select:
+				if (isDown) {
+					Select();
+				}
+				break;
+			case Action::Back:
+				if (isDown) {
+					Back();
+				}
+				break;
+			case Action::None:
+				break;
+		}
 
-					if (event_name == userEvent->accept) {
-						Select();
-					} else if (event_name == userEvent->cancel) {
-						Back();
-					} else if (event_name == userEvent->up) {
-						_upHeld += 1;
-						_upHeld = isDown;
-						if (isDown)
-							ModSelectedIndex(-1);
-						if (isUp) {
-							_heldGuard = 0;
-							_heldCount = 0;
-						}
-					} else if (event_name == userEvent->down) {
-						_downHeld = isDown;
-						if (isDown)
-							ModSelectedIndex(1);
-						if (isUp) {
-							_heldGuard = 0;
-							_heldCount = 0;
-						}
-					} else if (event_name == userEvent->pageUp) {
-						ModSelectedIndex(-16);
-					} else if (event_name == userEvent->pageDown) {
-						ModSelectedIndex(16);
-					}
-				} break;
-			}
+		if (isUp) {
+			_heldGuard = 0;
+			_heldCount = 0;
 		}
 
 		return true;
